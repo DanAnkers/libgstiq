@@ -1,0 +1,9 @@
+Using the examples:
+
+softrx pi3ehv.wav fm
+
+satrx oscar16-6.wav | kiss2asc
+
+livewaterfall.sh
+
+kisstest.sh oscar16-6.kss && kiss2asc decoded.kss
