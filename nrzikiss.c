@@ -145,6 +145,8 @@ static GstFlowReturn gst_nrzikiss_chain(GstPad *pad, GstBuffer *buf)
 			nrzikiss->buf = gst_buffer_new();
 			GST_BUFFER_SIZE(nrzikiss->buf) = 2;
 			GST_BUFFER_DATA(nrzikiss->buf) = (guchar *)g_malloc(1024);
+			GST_BUFFER_MALLOCDATA(nrzikiss->buf) =
+			    GST_BUFFER_DATA(nrzikiss->buf);
 			GST_BUFFER_DATA(nrzikiss->buf)[0] = 0xc0;
 			GST_BUFFER_DATA(nrzikiss->buf)[1] = 0x0;
 			nrzikiss->crc = 0xffff;
@@ -162,6 +164,8 @@ static GstFlowReturn gst_nrzikiss_chain(GstPad *pad, GstBuffer *buf)
 				newbuf = (guchar *) g_realloc(
 				    GST_BUFFER_DATA(nrzikiss->buf),
 				    GST_BUFFER_SIZE(nrzikiss->buf) + 1026);
+				GST_BUFFER_MALLOCDATA(nrzikiss->buf) =
+				    GST_BUFFER_DATA(nrzikiss->buf);
 				if (!newbuf) {
 					/* Low mem, we drop whatever we had
 					   and hope frames are smaller than

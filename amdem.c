@@ -85,6 +85,8 @@ static GstFlowReturn gst_iqamdem_chain(GstPad *pad, GstBuffer *buf)
 	gst_caps_unref(caps);
 	gst_buffer_unref(buf);
 	gst_pad_push(amdem->srcpad, outbuf);
+
+	gst_object_unref(amdem);
 	return GST_FLOW_OK;
 }
 
@@ -153,6 +155,7 @@ static gboolean gst_iqamdem_setcaps(GstPad *pad, GstCaps *caps)
 	    NULL);
 
 	gst_pad_use_fixed_caps(other);
+	gst_object_unref(amdem);
 	return gst_pad_set_caps(other, newcaps);
 }
 

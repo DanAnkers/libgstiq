@@ -91,6 +91,7 @@ enum {
 	KISSNRZI_ST_HEAD,
 	KISSNRZI_ST_PACKET,
 	KISSNRZI_ST_TAIL,
+	KISSNRZI_ST_FLAG,
 };
 
 static GstFlowReturn gst_kissnrzi_chain(GstPad *pad, GstBuffer *inbuf)
@@ -121,14 +122,15 @@ static GstFlowReturn gst_kissnrzi_chain(GstPad *pad, GstBuffer *inbuf)
 				continue;
 			}
 			if (byte == 0xc0) {
-				if (kissnrzi->buflen == 0)
-					continue;
-				if (kissnrzi->buffer[0] != 0x00) {
+				if (kissnrzi->buflen == 0) {
+					kissnrzi->state = KISSNRZI_ST_FLAG;
+				} else if (kissnrzi->buffer[0] != 0x00) {
 					kissnrzi->buflen = 0;
 					continue;
+				} else {
+					kissnrzi->state = KISSNRZI_ST_HEAD;
 				}
 				i++;
-				kissnrzi->state = KISSNRZI_ST_HEAD;
 				break;
 			}
 			if (kissnrzi->lastesc) {
@@ -156,6 +158,7 @@ static GstFlowReturn gst_kissnrzi_chain(GstPad *pad, GstBuffer *inbuf)
 			gst_buffer_unref(kissnrzi->inbuf);
 			kissnrzi->inbuf = NULL;
 			gst_caps_unref(caps);
+			gst_object_unref(kissnrzi);
 			return GST_FLOW_OK;
 		}
 		break;
@@ -229,6 +232,17 @@ static GstFlowReturn gst_kissnrzi_chain(GstPad *pad, GstBuffer *inbuf)
 	case KISSNRZI_ST_TAIL:
 		buf = gst_buffer_new_and_alloc(kissnrzi->taillen*8*sizeof(gfloat));
 		for (i = 0; i < kissnrzi->taillen*8; i++) {
+			if (i % 8 == 0 || i % 8 == 7)
+				kissnrzi->bit = -kissnrzi->bit;
+			((gfloat *)GST_BUFFER_DATA(buf))[i] = kissnrzi->bit;
+		}
+		gst_buffer_set_caps(buf, caps);
+		gst_pad_push(kissnrzi->srcpad, buf);
+		kissnrzi->state = KISSNRZI_ST_PARSE;
+		break;
+	case KISSNRZI_ST_FLAG:
+		buf = gst_buffer_new_and_alloc(8*sizeof(gfloat));
+		for (i = 0; i < 8; i++) {
 			if (i % 8 == 0 || i % 8 == 7)
 				kissnrzi->bit = -kissnrzi->bit;
 			((gfloat *)GST_BUFFER_DATA(buf))[i] = kissnrzi->bit;

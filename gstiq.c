@@ -22,14 +22,26 @@ static gboolean plugin_init (GstPlugin *plugin)
 	if (!gst_element_register(plugin, "iqpolar", GST_RANK_NONE,
 	    GST_TYPE_IQPOLAR))
 		return FALSE;
+	if (!gst_element_register(plugin, "iqvector", GST_RANK_NONE,
+	    GST_TYPE_IQVECTOR))
+		return FALSE;
 	if (!gst_element_register(plugin, "iqfmdem", GST_RANK_NONE,
 	    GST_TYPE_IQFMDEM))
 		return FALSE;
 	if (!gst_element_register(plugin, "firblock", GST_RANK_NONE,
 	    GST_TYPE_FIRBLOCK))
 	    	return FALSE;
+	if (!gst_element_register(plugin, "iqpolarhp", GST_RANK_NONE,
+	    GST_TYPE_IQPOLARHP))
+	    	return FALSE;
 	if (!gst_element_register(plugin, "cmplxfft", GST_RANK_NONE,
 	    GST_TYPE_CMPLXFFT))
+		return FALSE;
+	if (!gst_element_register(plugin, "cmplxrfft", GST_RANK_NONE,
+	    GST_TYPE_CMPLXRFFT))
+		return FALSE;
+	if (!gst_element_register(plugin, "iqfdemod", GST_RANK_NONE,
+	    GST_TYPE_IQFDEMOD))
 		return FALSE;
 	if (!gst_element_register(plugin, "waterfall", GST_RANK_NONE,
 	    GST_TYPE_WATERFALL))
@@ -55,6 +67,15 @@ static gboolean plugin_init (GstPlugin *plugin)
 	if (!gst_element_register(plugin, "kissnrzi", GST_RANK_NONE,
 	    GST_TYPE_KISSNRZI))
 		return FALSE;
+	if (!gst_element_register(plugin, "kissstreamer", GST_RANK_NONE,
+	    GST_TYPE_KISSSTREAMER))
+		return FALSE;
+	if (!gst_element_register(plugin, "vectorscope", GST_RANK_NONE,
+	    GST_TYPE_VECTORSCOPE))
+		return FALSE;
+	if (!gst_element_register(plugin, "dvbmux", GST_RANK_NONE,
+	    GST_TYPE_DVBMUX))
+		return FALSE;
 	
 	return TRUE;
 }
@@ -62,10 +83,11 @@ static gboolean plugin_init (GstPlugin *plugin)
 GST_PLUGIN_DEFINE(
 	GST_VERSION_MAJOR, GST_VERSION_MINOR,
 	"iq",
-	"Quadrature software radio and related filters",
+	"Quadrature software radio and related plugins",
 	plugin_init,
 	IQ_VERSION,
 	"GPL", 		/* This is NOT a mistake... */
 	"libgstiq",
 	"http://sharon.esrac.ele.tue.nl/users/pe1rxq/libgstiq/"
 );
+

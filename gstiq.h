@@ -16,7 +16,7 @@
 #include <fftw3.h>
 #include <gst/gst.h>
 
-#define IQ_VERSION "0.1"
+#define IQ_VERSION "0.2"
 #define PACKAGE "libgstiq"
 
 /********************************************************************
@@ -52,6 +52,39 @@ GType gst_iqfshift_get_type(void);
 
 
 /********************************************************************
+ *	Polar High Pass declarations
+ */
+
+typedef struct _Gst_iqpolarhp Gst_iqpolarhp;
+
+struct _Gst_iqpolarhp {
+	GstElement element;
+
+	GstPad *sinkpad, *srcpad;
+
+	int rate;
+	float shift;
+	float step;
+	float angle;
+	float corangle;
+};
+
+typedef struct _Gst_iqpolarhp_class Gst_iqpolarhp_class;
+
+struct _Gst_iqpolarhp_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_IQPOLARHP (gst_iqpolarhp_get_type())
+#define GST_IQPOLARHP(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_IQPOLARHP, Gst_iqpolarhp)
+#define GST_IQPOLARHP_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_IQPOLARHP, Gst_iqpolarhp)
+#define GST_IS_IQPOLARHP(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_IQPOLARHP)
+#define GST_IS_IQPOLARHP_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_IQPOLARHP)
+
+GType gst_iqpolarhp_get_type(void);
+
+
+/********************************************************************
  *	vector to polar converter declarations
  */
 
@@ -76,6 +109,33 @@ struct _Gst_iqpolar_class {
 #define GST_IS_IQPOLAR_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_IQPOLAR)
 
 GType gst_iqpolar_get_type(void);
+
+
+/********************************************************************
+ *	polar to vector converter declarations
+ */
+
+typedef struct _Gst_iqvector Gst_iqvector;
+
+struct _Gst_iqvector {
+	GstElement element;
+
+	GstPad *sinkpad, *srcpad;
+};
+
+typedef struct _Gst_iqvector_class Gst_iqvector_class;
+
+struct _Gst_iqvector_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_IQVECTOR (gst_iqvector_get_type())
+#define GST_IQVECTOR(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_IQVECTOR, Gst_iqvector)
+#define GST_IQVECTOR_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_IQVECTOR, Gst_iqvector)
+#define GST_IS_IQVECTOR(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_IQVECTOR)
+#define GST_IS_IQVECTOR_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_IQVECTOR)
+
+GType gst_iqvector_get_type(void);
 
 
 /********************************************************************
@@ -182,6 +242,85 @@ GType gst_cmplxfft_get_type(void);
 
 
 /********************************************************************
+ *	Complex reverse FFT
+ */
+
+typedef struct _Gst_cmplxrfft Gst_cmplxrfft;
+
+struct _Gst_cmplxrfft {
+	GstElement element;
+
+	GstPad *sinkpad, *srcpad;
+
+	fftwf_complex *buffer;
+	fftwf_plan plan;
+	int length;
+	int fill;
+
+	long offset;
+};
+
+typedef struct _Gst_cmplxrfft_class Gst_cmplxrfft_class;
+
+struct _Gst_cmplxrfft_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_CMPLXRFFT (gst_cmplxrfft_get_type())
+#define GST_CMPLXRFFT(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_CMPLXRFFT, Gst_cmplxrfft)
+#define GST_CMPLXRFFT_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_CMPLXRFFT, Gst_cmplxrfft)
+#define GST_IS_CMPLXRFFT(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_CMPLXRFFT)
+#define GST_IS_CMPLXRFFT_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_CMPLXRFFT)
+
+GType gst_cmplxrfft_get_type(void);
+
+
+/********************************************************************
+ *	Frequency domain demodulator
+ */
+
+typedef struct _Gst_iqfdemod Gst_iqfdemod;
+
+enum {
+	FDEMOD_RAW,
+	FDEMOD_AM,
+	FDEMOD_FM,
+	FDEMOD_USB,
+	FDEMOD_LSB,
+	FDEMOD_CW,
+};
+
+struct _Gst_iqfdemod {
+	GstElement element;
+
+	GstPad *sinkpad, *srcpad;
+
+	int sinklength;
+	int srclength;
+	int sinkrate;
+	int srcrate;
+	
+	int mode;
+	int offset;
+	int foffset;
+};
+
+typedef struct _Gst_iqfdemod_class Gst_iqfdemod_class;
+
+struct _Gst_iqfdemod_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_IQFDEMOD (gst_iqfdemod_get_type())
+#define GST_IQFDEMOD(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_IQFDEMOD, Gst_iqfdemod)
+#define GST_IQFDEMO_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_IQFDEMOD, Gst_iqfdemod)
+#define GST_IS_IQFDEMOD(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_IQFDEMOD)
+#define GST_IS_IQFDEMOD_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_IQFDEMOD)
+
+GType gst_iqfdemod_get_type(void);
+
+
+/********************************************************************
  *	FFT Waterall
  */
 
@@ -204,6 +343,7 @@ struct _Gst_waterfall {
 	float markerf;
 	int marker;
 	int fcnt;
+	int factor;
 
 	long offset;
 };
@@ -216,12 +356,51 @@ struct _Gst_waterfall_class {
 
 #define GST_TYPE_WATERFALL (gst_waterfall_get_type())
 #define GST_WATERFALL(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_WATERFALL, Gst_waterfall)
-#define GST_WATERFALL_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_WATERFALL, Gst_waterfalll)
+#define GST_WATERFALL_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_WATERFALL, Gst_waterfall)
 #define GST_IS_WATERFALL(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_WATERFALL)
 #define GST_IS_WATERFALL_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_WATERFAL)
 
 GType gst_waterfall_get_type(void);
 
+/********************************************************************
+ *	VectorScope
+ */
+
+typedef struct _Gst_vectorscope Gst_vectorscope;
+
+struct _Gst_vectorscope {
+	GstElement element;
+
+	GstPad *sinkpad, *srcpad;
+
+	unsigned char *buffer;
+	int width;
+	int height;
+	int uoff;
+	int voff;
+	int size;
+	int rate;
+	int fcnt;
+	int framesamples;
+	int samples;
+	float decay;
+
+	long offset;
+};
+
+typedef struct _Gst_vectorscope_class Gst_vectorscope_class;
+
+struct _Gst_vectorscope_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_VECTORSCOPE (gst_vectorscope_get_type())
+#define GST_VECTORSCOPE(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_VECTORSCOPE, Gst_vectorscope)
+#define GST_VECTORSCOPE_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_VECTORSCOPE, Gst_vectorscope)
+#define GST_IS_VECTORSCOPE(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_VECTORSCOPE)
+#define GST_IS_VECTORSCOPE_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_VECTORSCOPE)
+
+GType gst_vectorscope_get_type(void);
 
 /********************************************************************
  *	AFC
@@ -241,6 +420,8 @@ struct _Gst_afc {
 	float afc;
 
 	long offset;
+	
+	float lastf;
 };
 
 typedef struct _Gst_afc_class Gst_afc_class;
@@ -348,6 +529,9 @@ struct _Gst_bpskrcdem {
 	float bit;
 	int count;
 	int state;
+	
+	int lowcount;
+	float lowdip;
 
 	long offset;
 };
@@ -505,6 +689,116 @@ struct _Gst_kissnrzi_class {
 #define GST_IS_KISSNRZI_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_KISSNRZI)
 
 GType gst_kissnrzi_get_type(void);
+
+
+/********************************************************************
+ *	KISS streamer declarations
+ */
+
+typedef struct _Gst_kissstreamer Gst_kissstreamer;
+
+struct _Gst_kissstreamer {
+	GstElement element;
+	
+	GstPad *sinkpad, *srcpad;
+
+	GstBuffer *inbuf;
+};
+
+typedef struct _Gst_kissstreamer_class Gst_kissstreamer_class;
+
+struct _Gst_kissstreamer_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_KISSSTREAMER (gst_kissstreamer_get_type())
+#define GST_KISSSTREAMER(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_KISSSTREAMER, Gst_kissstreamer)
+#define GST_KISSSTREAMER_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_KISSSTREAMER, Gst_kissstreamer)
+#define GST_IS_KISSSTREAMER(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_KISSSTREAMER)
+#define GST_IS_KISSSTREAMER_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_KISSSTREAMER)
+
+GType gst_kissstreamer_get_type(void);
+
+
+
+/********************************************************************
+ *	DVB multiplexer declarations
+ */
+
+typedef struct _Gst_dvbmux Gst_dvbmux;
+
+struct dvb_ts_packet {
+	unsigned char	sync_byte;
+	unsigned short	pid;
+	unsigned char	control;
+	unsigned char	pl[184];
+} __attribute__((packed));
+
+#define DVBMUX_PID_MASK	0x1fff
+#define DVBMUX_PID_PAT	0x0000
+
+#define DVBMUX_AF_AF	0x20
+#define DVBMUX_AF_PL	0x10
+#define DVBMUX_SYNC	0x47
+
+struct dvb_ts_pat {
+	unsigned char	pointer;
+	unsigned char	table_id;
+	unsigned short	section;
+	unsigned short	ts_id;
+	unsigned char	version;
+	unsigned char	sectionnr;
+	unsigned char	lastsection;
+} __attribute__((packed));
+
+struct dvb_ts_pat_prog {
+	unsigned short	number;
+	unsigned short	pid;
+} __attribute__((packed));
+
+struct dvb_ts_af {
+	unsigned char len;
+} __attribute__((packed));
+
+struct dvbmux_program {
+	GstPad *videosink;
+	GstPad *audiosink;
+
+	int prog;
+	int pmt_pid;
+	int video_pid;
+	int audio_pid;
+
+	struct dvb_ts_packet pmt;
+};
+
+struct _Gst_dvbmux {
+	GstElement element;
+
+	GstPad *srcpad;
+	GstFlowReturn state;
+	gint rate;
+	gint rate_base;
+
+	struct dvb_ts_packet pat;
+
+	struct dvbmux_program **programs;
+	int nrprograms;
+};
+
+typedef struct _Gst_dvbmux_class Gst_dvbmux_class;
+
+struct _Gst_dvbmux_class {
+	GstElementClass parent_class;
+};
+
+#define GST_TYPE_DVBMUX (gst_dvbmux_get_type())
+#define GST_DVBMUX(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, GST_TYPE_DVBMUX, Gst_dvbmux)
+#define GST_DVBMUX_CLASS(klass) G_TYPE_CHECK_CLASS_CAST(klass, GST_TYPE_DVBMUX, Gst_devbmux)
+#define GST_IS_DVBMUX(obj) G_TYPE_CHECK_INSTANCE_TYPE(obj, GST_TYPE_DVBMUX)
+#define GST_IS_DVBMUX_CLASS(obj) G_TYPE_CHECK_CLASS_TYPE(klass, GST_TYPE_DVBMUX)
+
+GType gst_dvbmux_get_type(void);
 
 
 #endif /* _INCLUDE_GSTIQ_H_ */

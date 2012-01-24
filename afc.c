@@ -34,7 +34,7 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
 		"endianness = (int) BYTE_ORDER, "
 		"depth = (int) 64, "		/* complex float = 2 * 32 */
 		"rate = (int) [ 1, MAX ], "
-		"length = (int) 1024, "
+		"length = (int) [ 1, MAX ], "
 		"channels = (int) 1"
 	)
 );
@@ -65,6 +65,14 @@ static GstFlowReturn gst_afc_chain(GstPad *pad, GstBuffer *buf)
 	GstBuffer *bufout;
 
 	afc = GST_AFC(gst_pad_get_parent(pad));
+	if (afc->length == -1) {
+		GstStructure *structure;
+		caps = gst_pad_get_caps(afc->sinkpad);
+		structure = gst_caps_get_structure(caps, 0);
+		gst_structure_get_int(structure, "length", &afc->length);
+		gst_structure_get_int(structure, "rate", &afc->rate);
+		gst_caps_unref(caps);
+	}
 
 	integrate = 0.0;
 	sum = 0.0;
@@ -82,6 +90,8 @@ static GstFlowReturn gst_afc_chain(GstPad *pad, GstBuffer *buf)
 		    ((float*)GST_BUFFER_DATA(buf))[i*2+1]);
 		if (f < 0.5 * max)
 			f = 0;
+		else
+			f = max;
 		integrate += f * (float)i;
 		sum += f;
 	}
@@ -89,12 +99,29 @@ static GstFlowReturn gst_afc_chain(GstPad *pad, GstBuffer *buf)
 		f = hypot(
 		    ((float*)GST_BUFFER_DATA(buf))[i*2],
 		    ((float*)GST_BUFFER_DATA(buf))[i*2+1]);
-		if (f < 0.5 * max)
+		if (f < 0.1 * max)
 			f = 0;
 		integrate += f * (float)(i - afc->length);
 		sum += f;
 	}
-	tafc = afc->afc * 0.99 + integrate / sum * step * 0.01;
+	f = integrate / sum * step - afc->afc;
+	i = integrate / sum + 0.5;
+	
+	if (f < 0.0)
+		f = -f;
+	{
+		float divf = afc->lastf - f;
+
+		afc->lastf = f;
+		if (divf < 0.0)
+			divf = -divf;
+		f *= f / divf;// * f / divf;
+	}
+	f /= 10000000 / afc->length;
+	if (f >= 1.0)
+		f = 0.9;
+	f *= f;
+	tafc = afc->afc * (1-f) + integrate / sum * step * f;
 	if (!isnan(tafc))
 		afc->afc = tafc;
 
@@ -109,6 +136,7 @@ static GstFlowReturn gst_afc_chain(GstPad *pad, GstBuffer *buf)
 	gst_buffer_unref(buf);
 	gst_pad_push(afc->srcpad, bufout);
 
+	gst_object_unref(afc);
 	return GST_FLOW_OK;
 }
 
@@ -120,10 +148,6 @@ static GstStateChangeReturn gst_afc_change_state(GstElement *element,
 
 static gboolean gst_afc_setcaps(GstPad *pad, GstCaps *caps)
 {
-	Gst_afc *afc;
-
-	afc = GST_AFC(gst_pad_get_parent(pad));
-
 	return TRUE;
 }
 
@@ -212,11 +236,12 @@ static void gst_afc_init(Gst_afc *afc)
 	gst_pad_use_fixed_caps(afc->sinkpad);
 	gst_pad_use_fixed_caps(afc->srcpad);
 
-	afc->length = 1024;
+	afc->length = -1;
 	afc->rate = 44100;
 	afc->afc = 0.0;
 	afc->mirror = 1;
 	afc->offset = 0;
+	afc->lastf = 0.0;
 }
 
 GType gst_afc_get_type(void)

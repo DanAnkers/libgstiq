@@ -28,7 +28,7 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
 		"endianness = (int) BYTE_ORDER, "
 		"depth = (int) 64, "
 		"rate = (int) [ 1, MAX ], "
-		"length = (int) 1024, "
+		"length = (int) [ 1, MAX ], "
 		"channels = (int) 1"
 	)
 );
@@ -52,9 +52,9 @@ static void gst_waterfall_base_init(Gst_waterfall_class *klass)
 	gst_caps_append_structure(capslist,
 	    gst_structure_new("video/x-raw-yuv",
 	        "format", GST_TYPE_FOURCC, format,
-		"width", G_TYPE_INT, 1024,
+		"width", GST_TYPE_INT_RANGE, 1, G_MAXINT,
 		"height", G_TYPE_INT, 128,
-		"framerate", GST_TYPE_DOUBLE_RANGE, 10.0, 100.0, NULL));
+		"framerate", GST_TYPE_FRACTION_RANGE, 1, 1, 50, 1, NULL));
 
 	src_template = gst_pad_template_new("src", GST_PAD_SRC,
 	     GST_PAD_ALWAYS, capslist);
@@ -75,8 +75,9 @@ static GstFlowReturn gst_waterfall_chain(GstPad *pad, GstBuffer *buf)
 
 	waterfall = GST_WATERFALL(gst_pad_get_parent(pad));
 
-	if (++waterfall->fcnt % 2 && waterfall->buffer) {
+	if (++waterfall->fcnt >= waterfall->factor && waterfall->buffer) {
 		unsigned char pix;
+		waterfall->fcnt = 0;
 		memmove(waterfall->buffer, waterfall->buffer+waterfall->length,
 		    waterfall->uoff - waterfall->length);
 		if (waterfall->frame & 1) {
@@ -91,16 +92,20 @@ static GstFlowReturn gst_waterfall_chain(GstPad *pad, GstBuffer *buf)
 		for (i = 0; i < GST_BUFFER_SIZE(buf)/sizeof(float)/2; i++) {
 			pix =
 			    hypot(((float*)GST_BUFFER_DATA(buf))[i*2],
-			    ((float*)GST_BUFFER_DATA(buf))[i*2+1]) * 511;
-			pix = 255 - (255 - pix) * (255 - pix) / 255;
-			if (i < GST_BUFFER_SIZE(buf)/sizeof(float)/4)
+			    ((float*)GST_BUFFER_DATA(buf))[i*2+1])
+			    * waterfall->length;
+			
+			pix = 46 * log(pix);
+			//pix = 255 - (255 - pix) * (255 - pix) / 255;
+			if (i < GST_BUFFER_SIZE(buf)/sizeof(float)/4) {
 				waterfall->buffer[
 				    waterfall->uoff-waterfall->length/2+i]=
 				    pix;
-			else
+			} else {
 				waterfall->buffer[
 				    waterfall->uoff-(waterfall->length*3)/2+i]=
 				    pix;
+			}
 		}
 		if (waterfall->frame&1) for (i=0; i<waterfall->length/2; i++) {
 			pix = waterfall->buffer[waterfall->uoff-1-i*2]/2;
@@ -128,6 +133,7 @@ static GstFlowReturn gst_waterfall_chain(GstPad *pad, GstBuffer *buf)
 		gst_pad_push(waterfall->srcpad, outbuf);
 	}
 	gst_buffer_unref(buf);
+	gst_object_unref(waterfall);
 	return GST_FLOW_OK;
 }
 
@@ -209,23 +215,39 @@ static gboolean gst_waterfall_setcaps(GstPad *pad, GstCaps *caps)
 	Gst_waterfall *waterfall;
 	GstStructure *structure;
 	GstCaps *newcaps;
+	gboolean ret;
 
 	waterfall = GST_WATERFALL(gst_pad_get_parent(pad));
 
 	structure = gst_caps_get_structure(caps, 0);
 	gst_structure_get_int(structure, "rate", &waterfall->rate);
+	gst_structure_get_int(structure, "length", &waterfall->length);
+
+	if (waterfall->length & 3)
+		return FALSE;
+
+	waterfall->factor = 1;
+	if (waterfall->rate / waterfall->length >= 10) {
+		while ((float)waterfall->rate/(float)waterfall->length/
+		    (float)waterfall->factor > 50.0)
+			waterfall->factor++;
+	}
+	waterfall->fcnt = 0;
 
 	gst_waterfall_setup(waterfall);
 
 	newcaps = gst_caps_copy(
 	    gst_pad_get_pad_template_caps(waterfall->srcpad));
 	structure = gst_caps_get_structure(newcaps, 0);
-	gst_structure_set(structure, "framerate", G_TYPE_DOUBLE, 
-	    (double)waterfall->rate / (double)waterfall->length / 2.0, NULL);
+	gst_structure_set(structure, "framerate", GST_TYPE_FRACTION, 
+	    waterfall->rate, waterfall->length * waterfall->factor, NULL);
+	gst_structure_set(structure, "width", G_TYPE_INT, waterfall->length,
+	    NULL);
 	gst_pad_use_fixed_caps(waterfall->srcpad);
-	return gst_pad_set_caps(waterfall->srcpad, newcaps);
+	ret = gst_pad_set_caps(waterfall->srcpad, newcaps);
+	gst_object_unref(waterfall);
 
-	return TRUE;
+	return ret;
 //	return gst_pad_try_set_caps(
 //	    (pad == waterfall->srcpad) ? waterfall->sinkpad : waterfall->srcpad,
 //	    gst_caps_copy(caps));

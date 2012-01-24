@@ -171,7 +171,7 @@ static GstFlowReturn gst_firblock_chain(GstPad *pad, GstBuffer *buf)
 				}
 			}
 		}
-		if (!gst_buffer_is_writable(buf))
+		if (buf != outbuf)
 			gst_buffer_unref(buf);
 		gst_buffer_set_caps(outbuf, caps);
 		gst_pad_push(firblock->srcpad, outbuf);
@@ -180,6 +180,7 @@ static GstFlowReturn gst_firblock_chain(GstPad *pad, GstBuffer *buf)
 		gst_pad_push(firblock->srcpad, buf);
 	}
 	gst_caps_unref(caps);
+	gst_object_unref(firblock);
 	return GST_FLOW_OK;
 }
 
@@ -236,6 +237,7 @@ static gboolean gst_firblock_setcaps(GstPad *pad, GstCaps *caps)
 {
 	GstStructure *structure;
 	Gst_firblock *firblock;
+	gboolean ret;
 
 	firblock = GST_FIRBLOCK(gst_pad_get_parent(pad));
 	structure = gst_caps_get_structure(caps, 0);
@@ -247,9 +249,11 @@ static gboolean gst_firblock_setcaps(GstPad *pad, GstCaps *caps)
 	firblockfilterrealloc(firblock);
 	gst_pad_use_fixed_caps(pad == firblock->srcpad ? firblock->sinkpad :
 	    firblock->srcpad);
-	return gst_pad_set_caps(
+	ret = gst_pad_set_caps(
 	    (pad == firblock->srcpad) ? firblock->sinkpad : firblock->srcpad,
 	    gst_caps_copy(caps));
+	gst_object_unref(firblock);
+	return ret;
 }
 
 static void gst_firblock_class_init(Gst_firblock_class *klass)

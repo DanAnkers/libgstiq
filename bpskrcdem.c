@@ -67,6 +67,7 @@ static GstFlowReturn gst_bpskrcdem_chain(GstPad *pad, GstBuffer *buf)
 	outbuf = gst_buffer_new();
 	GST_BUFFER_SIZE(outbuf) = 0;
 	GST_BUFFER_DATA(outbuf) = g_malloc(GST_BUFFER_SIZE(buf));
+	GST_BUFFER_MALLOCDATA(outbuf) = GST_BUFFER_DATA(outbuf);
 	bufout = (gfloat *)GST_BUFFER_DATA(outbuf);
 	caps = gst_pad_get_caps(bpskrcdem->srcpad);
 	if (!gst_caps_is_fixed(caps)) {
@@ -87,29 +88,33 @@ static GstFlowReturn gst_bpskrcdem_chain(GstPad *pad, GstBuffer *buf)
 		abs = iqbuf[i];
 		angle = iqbuf[i+1];
 
+		bpskrcdem->avrg *= bpskrcdem->symbollen * 24 - 1.0;
+		bpskrcdem->avrg /= bpskrcdem->symbollen * 24;
 		if (abs > bpskrcdem->avrg) {
-			bpskrcdem->avrg +=
-			    (abs - bpskrcdem->avrg)/(bpskrcdem->symbollen);
-		} else {
-			bpskrcdem->avrg +=
-			    (abs - bpskrcdem->avrg)/(bpskrcdem->symbollen * 64);
+			bpskrcdem->avrg *= bpskrcdem->symbollen * 4;
+			bpskrcdem->avrg += abs;
+			bpskrcdem->avrg /= bpskrcdem->symbollen * 4 + 1;
 		}
 
-		switch(bpskrcdem->state) {
-			case STATE_LOW:
-				if (abs > bpskrcdem->avrg * 0.71) {
-					bpskrcdem->state = STATE_HIGH;
-					if (bpskrcdem->count>(bpskrcdem->symbollen/2))
-						bpskrcdem->count -= bpskrcdem->symbollen;
-					bpskrcdem->count /= 2;
-				}
+		switch (bpskrcdem->state) {
+			case STATE_HIGHBIT:
 				bpskrcdem->count++;
-				if (bpskrcdem->count==bpskrcdem->symbollen/4)
-					bpskrcdem->state=STATE_HIGHBIT;
+				if (bpskrcdem->count > bpskrcdem->symbollen) {
+					bpskrcdem->count -= bpskrcdem->symbollen;
+				}
+				if (bpskrcdem->count > bpskrcdem->symbollen/4 &&
+				    bpskrcdem->count < bpskrcdem->symbollen/2) {
+					bpskrcdem->state = STATE_HIGH;
+				}
+				if (abs < bpskrcdem->avrg * 0.5) {
+					bpskrcdem->state = STATE_LOW;
+					bpskrcdem->lowcount = 0;
+					bpskrcdem->lowdip = abs;
+				}
 				break;
 			case STATE_HIGH:
-				if (bpskrcdem->count>=(bpskrcdem->symbollen/4) &&
-				    bpskrcdem->count<(bpskrcdem->symbollen/2)) {
+				bpskrcdem->count++;
+				if (bpskrcdem->count >= (bpskrcdem->symbollen+1)/2) {
 					float devangle;
 
 					devangle = angle - bpskrcdem->prevangle;
@@ -127,15 +132,26 @@ static GstFlowReturn gst_bpskrcdem_chain(GstPad *pad, GstBuffer *buf)
 					j++;
 					bpskrcdem->state = STATE_HIGHBIT;
 				}
-			case STATE_HIGHBIT:
+				break;
+			case STATE_LOW:
 				bpskrcdem->count++;
-				if (bpskrcdem->count > bpskrcdem->symbollen)
+				bpskrcdem->lowcount++;
+				if (bpskrcdem->count > bpskrcdem->symbollen) {
 					bpskrcdem->count -= bpskrcdem->symbollen;
-				if (abs < bpskrcdem->avrg * 0.69 &&
-				    bpskrcdem->count > bpskrcdem->symbollen/4+1)
-					bpskrcdem->state = STATE_LOW;
-				if (bpskrcdem->count>=(bpskrcdem->symbollen/4)*3) {
+				}
+				if (bpskrcdem->count >= bpskrcdem->symbollen*2/5 &&
+				    bpskrcdem->count < bpskrcdem->symbollen/2) {
 					bpskrcdem->state = STATE_HIGH;
+				}
+				if (abs >= bpskrcdem->avrg * 0.8) {
+					bpskrcdem->state = STATE_HIGH;
+					bpskrcdem->count += bpskrcdem->lowcount;
+					bpskrcdem->count /= 2;
+					bpskrcdem->count = bpskrcdem->lowcount;
+				}
+				if (abs < bpskrcdem->lowdip) {
+					bpskrcdem->lowdip = abs;
+					bpskrcdem->lowcount = 0;
 				}
 				break;
 		}
@@ -149,6 +165,7 @@ static GstFlowReturn gst_bpskrcdem_chain(GstPad *pad, GstBuffer *buf)
 		gst_buffer_unref(outbuf);
 	else
 		gst_pad_push(bpskrcdem->srcpad, outbuf);
+	gst_object_unref(bpskrcdem);
 	return GST_FLOW_OK;
 }
 

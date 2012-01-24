@@ -74,6 +74,7 @@ static GstFlowReturn gst_iqcmplx_chain(GstPad *pad, GstBuffer *buf)
 	gst_buffer_set_caps(buf, caps);
 	gst_caps_unref(caps);
 	gst_pad_push(cmplx->srcpad, buf);
+	gst_object_unref(cmplx);
 	return GST_FLOW_OK;
 }
 

@@ -88,7 +88,7 @@ static GstFlowReturn gst_iqfshift_chain(GstPad *pad, GstBuffer *buf)
 			if (fshift->angle < -2 * M_PI)
 				fshift->angle += 2 * M_PI;
 		}
-		if (!gst_buffer_is_writable(buf))
+		if (buf != outbuf)
 			gst_buffer_unref(buf);
 		gst_buffer_set_caps(outbuf, caps);
 		gst_pad_push(fshift->srcpad, outbuf);
@@ -97,6 +97,7 @@ static GstFlowReturn gst_iqfshift_chain(GstPad *pad, GstBuffer *buf)
 		gst_pad_push(fshift->srcpad, buf);
 	}
 	gst_caps_unref(caps);
+	gst_object_unref(fshift);
 	return GST_FLOW_OK;
 }
 
@@ -147,6 +148,7 @@ static gboolean gst_iqfshift_setcaps(GstPad *pad, GstCaps *caps)
 {
 	GstStructure *structure;
 	Gst_iqfshift *fshift;
+	gboolean ret;
 
 	fshift = GST_IQFSHIFT(gst_pad_get_parent(pad));
 	structure = gst_caps_get_structure(caps, 0);
@@ -157,9 +159,11 @@ static gboolean gst_iqfshift_setcaps(GstPad *pad, GstCaps *caps)
 
 	gst_pad_use_fixed_caps(
 	    pad == fshift->srcpad ? fshift->sinkpad : fshift->srcpad);
-	return gst_pad_set_caps(
+	ret = gst_pad_set_caps(
 	    pad == fshift->srcpad ? fshift->sinkpad : fshift->srcpad,
 	    gst_caps_copy(caps));
+	gst_object_unref(fshift);
+	return ret;
 }
 
 static void gst_iqfshift_class_init(Gst_iqfshift_class *klass)

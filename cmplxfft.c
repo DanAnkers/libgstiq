@@ -58,11 +58,10 @@ static GstFlowReturn gst_cmplxfft_chain(GstPad *pad, GstBuffer *buf)
 	int i, j;
 
 	cmplxfft = GST_CMPLXFFT(gst_pad_get_parent(pad));
-
 	if (cmplxfft->buffer) {
 		j = 0;
 		while (j < GST_BUFFER_SIZE(buf)/sizeof(fftwf_complex)) {
-			i = cmplxfft->length;
+			i = GST_BUFFER_SIZE(buf)/sizeof(fftwf_complex) - j;
 			if (i > cmplxfft->length - cmplxfft->fill)
 				i = cmplxfft->length - cmplxfft->fill;
 			memcpy(cmplxfft->buffer + cmplxfft->fill,
@@ -70,7 +69,7 @@ static GstFlowReturn gst_cmplxfft_chain(GstPad *pad, GstBuffer *buf)
 			    i * sizeof(fftwf_complex));
 			j += i;
 			cmplxfft->fill += i;
-			if (i >= cmplxfft->length) {
+			if (cmplxfft->fill >= cmplxfft->length) {
 				int k;
 				cmplxfft->fill = 0;
 				outbuf = gst_buffer_new_and_alloc(
@@ -94,6 +93,7 @@ static GstFlowReturn gst_cmplxfft_chain(GstPad *pad, GstBuffer *buf)
 		}
 	}
 	gst_buffer_unref(buf);
+	gst_object_unref(cmplxfft);
 	return GST_FLOW_OK;
 }
 
@@ -129,6 +129,7 @@ static gboolean gst_cmplxfft_setcaps(GstPad *pad, GstCaps *caps)
 	GstCaps *newcaps;
 	GstStructure *structure;
 	gint rate;
+	gboolean ret;
 
 	cmplxfft = GST_CMPLXFFT(gst_pad_get_parent(pad));
 	structure = gst_caps_get_structure(caps, 0);
@@ -146,8 +147,10 @@ static gboolean gst_cmplxfft_setcaps(GstPad *pad, GstCaps *caps)
 
 	gst_pad_use_fixed_caps(pad == cmplxfft->sinkpad ? 
 	    cmplxfft->srcpad : cmplxfft->sinkpad);
-	return gst_pad_set_caps(pad == cmplxfft->sinkpad ? 
+	ret = gst_pad_set_caps(pad == cmplxfft->sinkpad ? 
 	    cmplxfft->srcpad : cmplxfft->sinkpad, newcaps);
+	gst_object_unref(cmplxfft);
+	return ret;
 }
 
 static void gst_cmplxfft_class_init(Gst_cmplxfft_class *klass)
