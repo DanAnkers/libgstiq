@@ -758,6 +758,7 @@ struct dvb_ts_pat_prog {
 
 struct dvb_ts_af {
 	unsigned char len;
+	unsigned char flags; // Added to enable compiling - don't know what it represents
 } __attribute__((packed));
 
 struct dvbmux_program {
