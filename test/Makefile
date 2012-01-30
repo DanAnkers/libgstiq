@@ -2,16 +2,16 @@
 #	Makefile for libgstiq test programs.
 #
 
-CFLAGS= -Wall `pkg-config gstreamer-0.9 --cflags`
-LDFLAGS= `pkg-config gstreamer-0.9 --libs`
+CFLAGS= -Wall `pkg-config gstreamer-0.10 --cflags`
+LDFLAGS= `pkg-config gstreamer-0.10 --libs`
 
 all: softrx satrx kiss2asc
 
 softrx: softrx.o
-	$(CC) $(LDFLAGS) $(CFLAGS) softrx.o -o softrx
+	$(CC) $(CFLAGS) softrx.o -o softrx $(LDFLAGS)
 
 satrx: satrx.o
-	$(CC) $(LDFLAGS) $(CFLAGS) satrx.o -o satrx
+	$(CC) $(CFLAGS) satrx.o -o satrx $(LDFLAGS)
 
 kiss2asc: kiss2asc.o
 	$(CC) $(CFLAGS) kiss2asc.o -o kiss2asc
