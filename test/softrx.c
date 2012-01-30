@@ -25,10 +25,16 @@ static void event_loop(GstElement * pipe)
 	bus = gst_element_get_bus(GST_ELEMENT (pipe));
 
 	while (TRUE) {
-		revent = gst_bus_poll(bus, GST_MESSAGE_ANY, -1);
+		/* FIXME: 
+		
+		http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBus.html#gst-bus-poll says "You should never use this function, since it is pure evil."
 
-		message = gst_bus_pop(bus);
+		I want to use my SDR for good, not evil.
+		*/
+		message = gst_bus_poll(bus, GST_MESSAGE_ANY, -1);
 		g_assert(message != NULL);
+
+		revent = message->type;
 
 		switch (revent) {
 			case GST_MESSAGE_EOS:

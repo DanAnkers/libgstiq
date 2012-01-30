@@ -24,11 +24,11 @@ static void event_loop(GstElement * pipe)
 	bus = gst_element_get_bus(GST_ELEMENT (pipe));
 
 	while (TRUE) {
-		revent = gst_bus_poll(bus, GST_MESSAGE_ANY, -1);
-
-		message = gst_bus_pop(bus);
+	  /* FIXME: Don't use gst_bus_poll */
+		message = gst_bus_poll(bus, GST_MESSAGE_ANY, -1);
 		g_assert(message != NULL);
 
+    revent = message->type;
 		switch (revent) {
 			case GST_MESSAGE_EOS:
 				gst_message_unref(message);
